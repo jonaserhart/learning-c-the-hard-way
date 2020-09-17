@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <assert.h>
 
 
 void die(char *message){
@@ -20,6 +21,9 @@ int *bubble_sort(int *numbers, int count, compare_cb cmp){
   int j = 0;
   int *target = malloc(count * sizeof(int));
 
+  if (cmp == NULL)
+    die("not a valid compare function");
+  
   if(!target)
     die("Memory error");
 
