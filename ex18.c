@@ -78,7 +78,7 @@ int main(int argc, char* argv[]){
 
   test_sort(numbers, count, sorted_order);
   test_sort(numbers, count, reverse_order);
-  test_numbers(sort, count, strange_order);
+  test_sort(numbers, count, strange_order);
 
   free(numbers);
 
