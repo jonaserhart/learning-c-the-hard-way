@@ -18,13 +18,44 @@ int or(int x, int y){
   return (x || y);
 }
 
-int check_directory(const char* path, const char* find){
-  struct dirent *dir_entry;
-  DIR *dir = NULL;
-  FILE *file = NULL;
+typedef int (*operator_func) (int x, int y);
+
+int check_file_aux(FILE* file, char* wordsToFind[], int index, operator_func op){
+
+  check_continue(wordsToFind[index] != NULL, "Reading for file finished");
+
+  int line_number = 0;
+  int found = 0;
   char *line = NULL;
   size_t length = 0;
   ssize_t read = 0;
+
+  //set file pointer to start of file
+  fseek(file, 0, SEEK_SET);
+  
+  while((read = getline(&line, &length, file)) != -1){
+    if(strstr(line, wordsToFind[index])){
+      log_info("found '%s': line %d",wordsToFind[index], line_number+1);
+      found = 1;
+    }
+    line_number++;
+  }
+  return op(check_file_aux(file, wordsToFind, ++index, op), found);
+ cont:
+  if (op(0,1) == 1)
+    return(0);
+  else
+    return(1);
+}
+
+int check_file(FILE* file, char* wordsTofind[], operator_func op){
+  return check_file_aux(file, wordsTofind, 0, op);
+}
+
+int check_directory(const char* path, char* wordsToFind[], operator_func op){
+  struct dirent *dir_entry;
+  DIR *dir = NULL;
+  FILE *file = NULL;
   char *full_path = NULL;
   int rc = 0;
   
@@ -49,14 +80,11 @@ int check_directory(const char* path, const char* find){
       check_continue(file != NULL, "File '%s'  could not be opened", full_path);
 	
       log_info("Searching in file '%s'", full_path);
-	
-      int line_number = 0;
-      while((read = getline(&line, &length, file)) != -1){
-        if(strstr(line, find)){
-          log_info("found in %s: line %d", full_path, line_number+1);
-        }
-        line_number++;
-      }
+
+      int result = check_file(file, wordsToFind, op);
+
+      if (result)
+	log_info("File was a match");
       goto cont;
     cont:
       rc = fclose(file);
@@ -65,7 +93,7 @@ int check_directory(const char* path, const char* find){
     }
     else{
       if(strcmp(dir_entry->d_name, ".") != 0 && strcmp(dir_entry->d_name, "..") != 0)
-	check_directory(full_path, find);
+	check_directory(full_path, wordsToFind, op);
     }
   }
     closedir(dir);
@@ -77,23 +105,20 @@ int check_directory(const char* path, const char* find){
     return -1;
 }
 
-typedef int (*operator_func) (int x, int y);
-
 int main (int argc, char* argv[]){
   
   check(argc >= 2, "USAGE: logfind [-o(optional)] [...words]");
 
   operator_func op = NULL;
 
-  char* strToFind;
+  int wordIndex = 1;
   
   if(strcmp(argv[1], "-o") == 0){
     op = or;
-    strToFind = argv[2];
+    wordIndex = 2;
   }
   else{
     op = and;
-    strToFind = argv[1];
   }
 
   check(op != NULL, "Could not set operation");
@@ -101,7 +126,7 @@ int main (int argc, char* argv[]){
   int num_of_paths = sizeof(PATHS)/sizeof(char*);
   
   for (int j = 0; j < num_of_paths; j++){
-    check_directory(PATHS[j], strToFind);
+    check_directory(PATHS[j], argv + wordIndex, op);
   }   
   return 0;
 
