@@ -3,11 +3,14 @@
 #include <string.h>
 #include <stdarg.h>
 #include <dirent.h>
+#include <time.h>
 
 #include "dbg.h"
 
+#define MAXWORDLENGTH 255
+
 const char * PATHS[] = {
-			"/home/jonas/dev/logfilestest"
+			"/var/log",
 };
 
 int and(int x, int y){
@@ -20,9 +23,22 @@ int or(int x, int y){
 
 typedef int (*operator_func) (int x, int y);
 
-int check_file_aux(FILE* file, char* wordsToFind[], int index, operator_func op){
+typedef struct LinesAndWords {
+  int lineNo;
+  char* word;
+} LineWord_t;
 
-  check_continue(wordsToFind[index] != NULL, "Reading for file finished");
+typedef struct File_Result {
+	char* fileName;
+  int is_match;
+  LineWord_t* lineWords;
+	int result_size;
+} Result_t;
+
+int check_file_aux(FILE* file, char* wordsToFind[], int index, operator_func op, Result_t *result, int lineWordIndex){
+
+  if(wordsToFind[index] == NULL)
+		goto cont;
 
   int line_number = 0;
   int found = 0;
@@ -32,15 +48,22 @@ int check_file_aux(FILE* file, char* wordsToFind[], int index, operator_func op)
 
   //set file pointer to start of file
   fseek(file, 0, SEEK_SET);
-  
+
   while((read = getline(&line, &length, file)) != -1){
     if(strstr(line, wordsToFind[index])){
-      log_info("found '%s': line %d",wordsToFind[index], line_number+1);
+      LineWord_t lw = {
+		       .lineNo = line_number+1,
+		       .word=wordsToFind[index]
+      };
+      result->lineWords[lineWordIndex] = lw;
       found = 1;
+      lineWordIndex++;
+			result->result_size++;
+			result->lineWords = realloc(result->lineWords, sizeof(LineWord_t) * (lineWordIndex + 1));
     }
     line_number++;
   }
-  return op(check_file_aux(file, wordsToFind, ++index, op), found);
+  return op(check_file_aux(file, wordsToFind, ++index, op, result, lineWordIndex), found);
  cont:
   if (op(0,1) == 1)
     return(0);
@@ -48,11 +71,40 @@ int check_file_aux(FILE* file, char* wordsToFind[], int index, operator_func op)
     return(1);
 }
 
-int check_file(FILE* file, char* wordsTofind[], operator_func op){
-  return check_file_aux(file, wordsTofind, 0, op);
+void print_result(Result_t result){
+  LineWord_t lw = result.lineWords[0];
+	int size = result.result_size;
+  if ((result.is_match) == 1 && size > 0){
+		printf("\n\n--------------------------------------------------------------------------------------------------------------");
+    log_info("Result for file '%s'\n", result.fileName);
+    int i = 0;
+    while(i < size){
+      log_info("Found word '%s' at line number '%d'", lw.word, lw.lineNo);
+      lw =  result.lineWords[++i];
+    }
+  }
 }
 
-int check_directory(const char* path, char* wordsToFind[], operator_func op){
+int check_file(char* full_path, FILE* file, char* wordsToFind[], operator_func op){
+  Result_t *result = malloc(sizeof(Result_t));
+	result->fileName = malloc(sizeof(full_path) * sizeof(char));
+	result->fileName = full_path;
+  result->lineWords = malloc(sizeof(LineWord_t));
+	result->result_size = 0;
+  int rc = check_file_aux(file, wordsToFind, 0, op, result, 0);
+
+  result->is_match = rc;
+
+  print_result(*result);
+
+  if (result){
+    free(result);
+  }    
+
+  return rc;
+}
+
+int check_directory(const char* path, char* wordsToFind[], operator_func op, int checked_files){
   struct dirent *dir_entry;
   DIR *dir = NULL;
   FILE *file = NULL;
@@ -77,32 +129,30 @@ int check_directory(const char* path, char* wordsToFind[], operator_func op){
     if (dir_entry->d_type != DT_DIR){
 
       file = fopen(full_path, "r");
-      check_continue(file != NULL, "File '%s'  could not be opened", full_path);
-	
-      log_info("Searching in file '%s'", full_path);
+      check_continue(file != NULL, "File '%s'  could not be opened, are you sudo?", full_path);
 
-      int result = check_file(file, wordsToFind, op);
+      check_file(full_path, file, wordsToFind, op);
+			checked_files++;
 
-      if (result)
-	log_info("File was a match");
       goto cont;
     cont:
-      rc = fclose(file);
+			if (file)
+      	rc = fclose(file);
       check(rc == 0, "Failed to close file stream");
       free(full_path);
     }
     else{
       if(strcmp(dir_entry->d_name, ".") != 0 && strcmp(dir_entry->d_name, "..") != 0)
-	check_directory(full_path, wordsToFind, op);
+				checked_files += check_directory(full_path, wordsToFind, op, checked_files);
     }
   }
     closedir(dir);
-    return 0;
+    return checked_files;
  error:
     if (full_path) free(full_path);
     if(file) fclose(file);
     if(dir) closedir(dir);
-    return -1;
+    return checked_files;
 }
 
 int main (int argc, char* argv[]){
@@ -125,9 +175,17 @@ int main (int argc, char* argv[]){
 
   int num_of_paths = sizeof(PATHS)/sizeof(char*);
   
+	int files_checked = 0;
+	clock_t start, end;
+	double time;
+	start = clock();
   for (int j = 0; j < num_of_paths; j++){
-    check_directory(PATHS[j], argv + wordIndex, op);
+    int checked_files = check_directory(PATHS[j], argv + wordIndex, op, 0);
+		files_checked += checked_files;
   }   
+	end = clock();
+	time = ((double) (end - start)) / CLOCKS_PER_SEC;
+	log_info("%d files checked in %f seconds", files_checked, time);
   return 0;
 
  error:

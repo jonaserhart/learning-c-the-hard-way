@@ -32,7 +32,7 @@
     log_err(M, ##__VA_ARGS__); errno=0; goto error;}
 
 #define check_continue(A, M, ...) if(!(A)) {\
-    log_warn(M, ##__VA_ARGS__); goto cont;}
+    log_info(M, ##__VA_ARGS__); goto cont;}
   
 #define sentinel(M, ...) {log_err(M, ##__VA_ARGS__);\
     errno=0; goto error;}

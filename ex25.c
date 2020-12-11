@@ -14,10 +14,10 @@ int read_string(char **out_string, int max_buffer){
 
   return 0;
 
- error:
-   if(*out_string) free(*out_string);
-   *out_string = NULL;
-   return -1;
+	error:
+   	if(*out_string) free(*out_string);
+   	*out_string = NULL;
+   	return -1;
 }
 
 int read_int(long *out_int){
@@ -33,9 +33,9 @@ int read_int(long *out_int){
   free(input);
   return 0;
 
- error:
-  if(input) free(input);
-  return 0;
+ 	error:
+  	if(input) free(input);
+  	return 0;
 }
 
 int read_scan(const char* fmt, ...){
