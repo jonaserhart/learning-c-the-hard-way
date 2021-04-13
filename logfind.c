@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <time.h>
 
+//debug makros
 #include "dbg.h"
 
 #define MAXWORDLENGTH 255
@@ -46,7 +47,7 @@ int check_file_aux(FILE* file, char* wordsToFind[], int index, operator_func op,
   size_t length = 0;
   ssize_t read = 0;
 
-  //set file pointer to start of file
+  //set file pointer to start of file 
   fseek(file, 0, SEEK_SET);
 
   while((read = getline(&line, &length, file)) != -1){
