@@ -1,3 +1,1 @@
-# This is a template for a c - project
-
-Look at the Makefile for further information
+# Exercise 29 - Linking and testing
