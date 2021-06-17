@@ -2,7 +2,7 @@
 #ifndef _minunit_h
 #define _minunit_h
 
-#include "dbg.h"
+#include <dbg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -31,7 +31,7 @@
 		} else { \
 			printf("ALL TESTS PASSED\n"); \
 		} \
-		printf("Tests run: %d", tests_run); \
+		printf("Tests run: %s", tests_run); \
 		exit(result != 0); \
 	}
 

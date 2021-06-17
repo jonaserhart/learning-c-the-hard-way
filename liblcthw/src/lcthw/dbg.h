@@ -1,7 +1,3 @@
-/**
- * Jonas' awesome debug macros
- */
-
 #ifndef __dbg_h__
 #define __dbg_h__
 
@@ -40,11 +36,11 @@
  * prints a formatted warn message to stderr
  */
 #define log_warn(M, ...) \
-	fprintf(stderr, KYEL "[WARN] (%s:%d:%s: errno: %s) " M "\n" RESET, __FILE__, __LINE__, \
+	fprintf(stdout, KYEL "[WARN] (%s:%d:%s: errno: %s) " M "\n" RESET, __FILE__, __LINE__, \
 	        __PRETTY_FUNCTION__, clean_errno(), ##__VA_ARGS__)
 
 #define log_info(M, ...) \
-	fprintf(stderr, KBLU "[INFO] (%s:%d:%s) " M "\n" RESET, __FILE__, __LINE__, \
+	fprintf(stdout, KBLU "[INFO] (%s:%d:%s) " M "\n" RESET, __FILE__, __LINE__, \
 	        __PRETTY_FUNCTION__, ##__VA_ARGS__)
 
 #define check(A, M, ...) \
